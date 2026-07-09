@@ -39,6 +39,21 @@ class File extends Base
         return Result::ok($result);
     }
 
+    public static function delete(string $path): Result
+    {
+        static::debug('delete', ['filename' => $path]);
+
+        if (is_dir($path)) {
+            return Result::err('Error deleting file, ' . $path . ' is a directory.');
+        }
+
+        if (unlink($path)) {
+            return Result::ok($path);
+        }
+
+        return Result::err('Error deleting file ' . $path);
+    }
+
     public static function getContents(string $filename): Result
     {
         $content = file_get_contents($filename);
