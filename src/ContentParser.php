@@ -2,6 +2,7 @@
 
 namespace Phunk\Cms;
 
+use DateTime;
 use Psr\Log\LoggerInterface;
 use Phunk\{Phunk, Base, Result};
 use Phunk\Cms\Entity\BaseContent as Content;
@@ -55,6 +56,11 @@ class ContentParser extends Base
         // Check if we have a title or slug override
         $entity->setSlug($data['yaml']['slug'] ?? $entity->getSlug());
         $entity->setTitle($data['yaml']['title'] ?? $entity->getTitle());
+
+        if (isset($data['yaml']['date']) && strtotime($data['yaml']['date'])) {
+            $ts = strtotime($data['yaml']['date']);
+            $entity->setDate(new DateTime('@' . $ts));
+        }
 
         $dataJson = [];
         foreach ($data['yaml'] as $key => $value) {
