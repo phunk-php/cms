@@ -1,14 +1,24 @@
 <?php
 
-namespace Phunk;
+namespace Phunk\Cms;
 
-use Phunk\{Base, Result};
+use Phunk\{Base, Phunk, Result};
 
 class File extends Base
 {
-    public static function getFilesFromPath(string $path): Result
+    public function clearPath(string $path): Result
     {
-        self::debug('getFilesFromPath', ['path' => $path]);
+        return $this->getFilesFromPath($path)
+        ->andThen(Phunk::map($this->delete(...)))
+        ->map(fn (array $results) => [
+            'deleted' => count(array_filter($results, fn (Result $result) => $result->isOk())),
+            'failed'  => count(array_filter($results, fn (Result $result) => $result->isErr())),
+        ]);
+    }
+
+    public function getFilesFromPath(string $path): Result
+    {
+        $this->debug('getFilesFromPath', ['path' => $path]);
 
         try {
             $files = scandir($path);
@@ -30,7 +40,7 @@ class File extends Base
         $result = [];
         foreach ($files as $file) {
             if (is_dir($file)) {
-                $result = array_merge($result, static::getFilesFromPath($file)->unwrap());
+                $result = array_merge($result, $this->getFilesFromPath($file)->unwrap());
             } else {
                 $result[] = $file;
             }
@@ -39,9 +49,9 @@ class File extends Base
         return Result::ok($result);
     }
 
-    public static function delete(string $path): Result
+    public function delete(string $path): Result
     {
-        static::debug('delete', ['filename' => $path]);
+        $this->debug('delete', ['filename' => $path]);
 
         if (is_dir($path)) {
             return Result::err('Error deleting file, ' . $path . ' is a directory.');

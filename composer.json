@@ -1,30 +1,47 @@
 {
     "name": "phunk/cms",
-    "description": "Phunk CMS",
+    "description": "CMS for Symfony built on functional programming in PHP.",
     "type": "library",
-    "minimum-stability": "dev",
-    "require": {
-        "phunk/framework": "*",
-        "league/html-to-markdown": "^5.1",
-        "league/plates": "^3.6",
-        "symfony/yaml": "^8.1",
-        "spatie/yaml-front-matter": "*",
-        "robmorgan/phinx": "*",
-        "league/commonmark": "^2.9@dev"
-    },
+    "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Phunk\\": "src/"
+            "Phunk\\Cms\\": "src/",
+            "Tests\\Unit\\": "tests/unit"
         }
     },
     "authors": [
         {
-            "name": "Jaakko Naakka",
-            "email": "jaakko@innota.co"
+            "name": "Jack Jackdaw",
+            "email": "j@ckdaw.net",
+            "homepage": "https://ja.ckdaw.net"
         }
     ],
+    "require": {
+        "php": ">=8.4",
+        "league/commonmark": "^2.9",
+        "league/glide": ">=3.2",
+        "league/glide-symfony": ">=2.1",
+        "phunk/phunk": "^0.5",
+        "spatie/yaml-front-matter": "^2.1",
+        "symfony/asset": "8.1.*",
+        "symfony/asset-mapper": "8.1.*",
+        "symfony/console": "8.1.*",
+        "symfony/dotenv": "8.1.*",
+        "symfony/flex": "^2",
+        "symfony/framework-bundle": "8.1.*",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/runtime": "8.1.*",
+        "symfony/twig-bundle": "8.1.*",
+        "symfony/yaml": "8.1.*",
+        "twig/extra-bundle": "^2.12|^3.0",
+        "twig/twig": "^2.12|^3.0"
+    },
     "require-dev": {
-        "phpunit/phpunit": "10.5.*",
-        "filp/whoops": "^2.18"
+        "phpunit/phpunit": "^10.5"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.5.x-dev"
+        }
     }
 }

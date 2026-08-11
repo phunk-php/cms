@@ -1,27 +1,67 @@
 <?php
 
-namespace Phunk\Command;
+namespace Phunk\Cms\Command;
 
-use Phunk\{Phunk, Command, Console, Result, Content};
-use Phunk\Model\Content as ContentModel;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Phunk\{Phunk, Base, Result};
+use Phunk\Cms\ContentParser;
+use App\Entity\Content;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Output\OutputInterface;
 
-class ContentCache extends Command
+//use Phunk\Model\Content as ContentModel;
+
+#[AsCommand(name: 'phunk:content:cache', description: 'Process all content and build the SQLite cache.')]
+class ContentCache extends Base
 {
-    public static $name = 'content:cache';
-    public static $description = 'Process all content and build the SQLite cache.';
+    private const DATE_FORMAT = 'Y-m-d H:i';
 
-    public static function execute(array $args): Result
+    public function __construct(
+        protected LoggerInterface $logger,
+        protected ContentParser $content,
+    ) {
+        return parent::__construct($logger);
+    }
+
+    public function __invoke(OutputInterface $output): int
     {
-        static::info('execute');
-        Console::out('Process all content into SQLite cache...');
+        $this->debug('__invoke');
+        $result = $this->content->processContent();
 
-        return Content::processContent()
-        ->andThen(Phunk::map(function(Result $row): array {
-            $content = $row->unwrap()->toArray();
-            $content['data'] = json_encode($content['data']);
-            return $content;
-        }))
-        ->andThen(Console::table(...))
+        if ($result->isErr()) {
+            return Command::FAILURE;
+        }
+
+        $data = $result
+        ->andThen(Phunk::map(fn(Result $item) => $item->unwrap()))
+        ->andThen(Phunk::map(fn(Content $item) => [
+            'id' => $item->getId(),
+            'slug' => $item->getSlug(),
+            'title' => $item->getTitle(),
+            'locale' => $item->getLocale(),
+            'type'   => $item->getType(),
+            'created' => $item->getCreatedAt()->format(self::DATE_FORMAT),
+            'updated' => $item->getUpdatedAt()->format(self::DATE_FORMAT),
+        ]))
+        ->unwrap()
         ;
+
+        $table = new Table($output);
+        $table
+        ->setHeaders(['ID', 'Slug', 'Title', 'Locale', 'Type', 'Created', 'Updated'])
+        ->setRows($data)
+        ;
+
+        $table->render();
+        return Command::SUCCESS;
+        // or return this if some error happened during the execution
+        // (it's equivalent to returning int(1))
+        // return Command::FAILURE;
+
+        // or return this to indicate incorrect command usage; e.g. invalid options
+        // or missing arguments (it's equivalent to returning int(2))
+        // return Command::INVALID
     }
 }
