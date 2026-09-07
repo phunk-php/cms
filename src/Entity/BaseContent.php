@@ -6,8 +6,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\DBAL\Types\Types;
 
-#[ORM\UniqueConstraint(name: 'content_locale_type_slug_unique', columns: ['locale', 'type', 'slug'])]
-#[ORM\HasLifecycleCallbacks]
+#[ORM\UniqueConstraint(name: 'locale_slug_unique', columns: ['locale', 'slug'])]
 abstract class BaseContent
 {
     #[ORM\Id]
@@ -20,9 +19,6 @@ abstract class BaseContent
 
     #[ORM\Column(length: 255)]
     protected ?string $slug = null;
-
-    #[ORM\Column(length: 255)]
-    protected ?string $type = null;
 
     #[ORM\Column(length: 8)]
     protected ?string $locale = null;
@@ -74,18 +70,6 @@ abstract class BaseContent
     public function setSlug(string $slug): static
     {
         $this->slug = $slug;
-
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(string $type): static
-    {
-        $this->type = $type;
 
         return $this;
     }
