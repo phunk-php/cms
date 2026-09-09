@@ -9,13 +9,13 @@ use League\CommonMark\Node\NodeIterator;
 use League\CommonMark\Node\StringContainerInterface;
 use League\CommonMark\Renderer\ChildNodeRendererInterface;
 use League\CommonMark\Renderer\NodeRendererInterface;
-use Phunk\Cms\ContentService;
+use Phunk\Cms\MediaService;
 use Twig\Environment;
 
 final class MediaImageRenderer implements NodeRendererInterface
 {
     public function __construct(
-        private readonly ContentService $content,
+        private readonly MediaService $media,
         private readonly Environment $twig,
         private readonly string $locale,
     ) {
@@ -27,7 +27,7 @@ final class MediaImageRenderer implements NodeRendererInterface
 
         $slug  = $node->getUrl();
         $alt   = $this->getAltText($node);
-        $media = $this->content->findOneByLocaleTypeAndSlug($this->locale, 'media', $slug)->unwrapOr(null);
+        $media = $this->content->findOneByLocaleAndSlug($this->locale, $slug)->unwrapOr(null);
 
         return $this->twig->render('element/inline-image.html.twig', [
             'slug'  => $slug,

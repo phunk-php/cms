@@ -12,7 +12,7 @@ use Twig\Extension\RuntimeExtensionInterface;
 class MarkdownRuntime implements RuntimeExtensionInterface
 {
     public function __construct(
-        private readonly ContentService $content,
+        private readonly MediaService $media,
         private readonly Environment $twig,
     ) {
     }
@@ -25,7 +25,7 @@ class MarkdownRuntime implements RuntimeExtensionInterface
     public function md2html(string $content, string $locale): string
     {
         $converter = new CommonMarkConverter();
-        $converter->getEnvironment()->addRenderer(Image::class, new MediaImageRenderer($this->content, $this->twig, $locale), 1);
+        $converter->getEnvironment()->addRenderer(Image::class, new MediaImageRenderer($this->media, $this->twig, $locale), 1);
 
         return (string) $converter->convert($content);
     }

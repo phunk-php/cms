@@ -7,7 +7,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Phunk\{Phunk, Base, Result};
 use Phunk\Cms\ContentParser;
-use App\Entity\Content;
+use Phunk\Cms\Entity\BaseContent as Content;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -41,7 +41,7 @@ class ContentCache extends Base
             'slug' => $item->getSlug(),
             'title' => $item->getTitle(),
             'locale' => $item->getLocale(),
-            'type'   => $item->getType(),
+            'type'   => $item::class,
             'created' => $item->getCreatedAt()->format(self::DATE_FORMAT),
             'updated' => $item->getUpdatedAt()->format(self::DATE_FORMAT),
         ]))

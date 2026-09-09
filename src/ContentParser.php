@@ -4,17 +4,30 @@ namespace Phunk\Cms;
 
 use DateTime;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Phunk\{Phunk, Base, Result};
 use Phunk\Cms\Entity\BaseContent as Content;
 
 class ContentParser extends Base
 {
+    protected array $servicesByType = [];
+
+    /**
+     * @param AbstractContentService[] $contentServices One per content type, wired
+     *                                                  explicitly in the app's
+     *                                                  services.yaml. Dispatch is
+     *                                                  keyed by AbstractContentService::getContentType().
+     */
     public function __construct(
         protected LoggerInterface $logger,
         protected File $file,
-        protected ContentService $contentService,
+        #[AutowireIterator('phunk.content_service')]
+        protected iterable $contentServices,
         protected string $path,
     ) {
+        foreach ($this->contentServices as $service) {
+            $this->servicesByType[$service->getContentType()] = $service;
+        }
     }
 
     public function processContent(): Result
@@ -23,8 +36,26 @@ class ContentParser extends Base
         ->andThen(Phunk::map($this->parseFileToEntity(...)))
         ->map(fn (array $files) => array_filter($files, fn(Result $file) => $file->isOk()))
         ->andThen(Phunk::map(fn(Result $result) => $result->unwrap()))
-        ->andThen(Phunk::map(fn(Content $content) => $this->contentService->updateOrInsert($content)));
+        ->andThen(Phunk::map($this->updateOrInsertEntity(...)))
         ;
+    }
+
+    private function updateOrInsertEntity(Content $content): Result
+    {
+        $services = iterator_to_array($this->contentServices->getIterator());
+        $services = array_filter($services, fn(AbstractContentService $service) => 
+            $service->getEntityClass() === get_class($content)
+        );
+        $service = array_first($services);
+
+        if (! $service) {
+            $this->debug('updateOrInsertEntity: no content service found for entity', [
+                'class' => get_class($content),
+            ]);
+            return Result::err('No content service found for entity "' . get_class($content) . '".');
+        }
+
+        return $service->updateOrInsert($content);
     }
 
     private function parseFileToEntity(string $filename): Result
@@ -34,10 +65,16 @@ class ContentParser extends Base
             $slug   = $matches['slug'];
             $locale = $matches['locale'];
 
-            $entityClass = $this->contentService->getEntityClass();
+            $contentService = $this->servicesByType[$type] ?? null;
+
+            if (! isset($this->servicesByType[$type])) {
+                $this->debug('parseFileToEntity: no content service registered for type', ['type' => $type, 'filename' => $filename]);
+                return Result::err('No content service registered for type "' . $type . '".');
+            }
+
+            $entityClass = $contentService->getEntityClass();
             $content = new $entityClass();
             $content
-            ->setType($type)
             ->setSlug($slug)
             ->setLocale($locale)
             ->setTitle($slug);
@@ -68,7 +105,13 @@ class ContentParser extends Base
                 continue;
             }
 
-            $dataJson[$key] = $value;
+            // Check if a setter exists
+            $method = 'set' . ucfirst($key);
+            if (is_callable([$entity, $method])) {
+                $entity->$method($value);
+            } else {
+                $dataJson[$key] = $value;
+            }
         }
 
         $entity
