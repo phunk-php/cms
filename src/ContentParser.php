@@ -45,7 +45,7 @@ class ContentParser extends Base
 
     private function flush(): Result
     {
-        //$this->em->flush();
+        $this->em->flush();
         return Result::ok();
     }
 
@@ -148,20 +148,19 @@ class ContentParser extends Base
 
     private function getOrCreateEntityInstance(string $entityClass, string $id): object
     {
-        $uow = $this->em->getUnitOfWork();
-        $idArray = $this->getIdArray($entityClass, $id);
-
-        // 1. If a relation previously created a proxy for this ID, reuse that proxy!
-        $existing = $uow->tryGetById($idArray, $entityClass);
-        if ($existing !== false && $existing !== null) {
+        // find() checks the UnitOfWork identity map first (so a proxy created by a
+        // relation, or an entity already parsed this run, is reused), then falls
+        // back to the DB -- unlike a bare identity-map check, this also catches
+        // rows that already exist from a previous import run.
+        $existing = $this->em->find($entityClass, $this->getIdArray($entityClass, $id));
+        if ($existing !== null) {
             return $existing;
         }
 
-        // 2. If it's not in memory, this is a BRAND NEW entity being created from a file.
-        // Instantiate it directly so Doctrine registers an INSERT statement.
-        $entity = new $entityClass();
-
-        return $entity;
+        // Not in memory and not in the DB -- this is a BRAND NEW entity being
+        // created from a file. Instantiate it directly so Doctrine registers an
+        // INSERT statement.
+        return new $entityClass();
     }
 
     private function getIdArray(string $entityClass, string $id): array

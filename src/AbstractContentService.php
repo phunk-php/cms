@@ -59,9 +59,7 @@ abstract class AbstractContentService extends Base
 
     public function updateOrInsert(Content $entity, bool $flush = false): Result
     {
-        return $this->findOneByLocaleAndSlug($entity->getLocale(), $entity->getSlug())
-        ->inspect($this->debug(...), 'Tried to find existing content')
-        ->orElse(fn() => Result::ok($entity))
+        return $this->assertNoLocaleSlugConflict($entity)
         ->map(fn(Content $content) =>
             $content
             ->setContent($entity->getContent())
@@ -70,6 +68,34 @@ abstract class AbstractContentService extends Base
             ->setData($entity->getData())
         )
         ->andThen($this->save(...), $flush)
+        ;
+    }
+
+    /**
+     * Guards against two different content files independently resolving to
+     * the same locale+slug (a UNIQUE constraint in the DB) but different ids.
+     * $entity is always the object mutated -- never whatever this lookup
+     * finds -- so this never substitutes a second, independently-hydrated
+     * instance for the one ContentParser already resolved by id.
+     */
+    private function assertNoLocaleSlugConflict(Content $entity): Result
+    {
+        return $this->findOneByLocaleAndSlug($entity->getLocale(), $entity->getSlug())
+        ->inspect($this->debug(...), 'Tried to find existing content')
+        ->orElse(fn() => Result::ok(null))
+        ->andThen(function (?Content $existing) use ($entity) {
+            if ($existing !== null && $existing->getId() !== $entity->getId()) {
+                return Result::err(new \RuntimeException(sprintf(
+                    'Locale/slug "%s/%s" already belongs to id "%s", cannot assign to id "%s".',
+                    $entity->getLocale(),
+                    $entity->getSlug(),
+                    $existing->getId(),
+                    $entity->getId()
+                )));
+            }
+
+            return Result::ok($entity);
+        })
         ;
     }
 
