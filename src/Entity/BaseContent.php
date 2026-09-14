@@ -10,9 +10,8 @@ use Doctrine\DBAL\Types\Types;
 abstract class BaseContent
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    protected ?int $id = null;
+    #[ORM\Column(length: 127)]
+    protected ?string $id = null;
 
     #[ORM\Column(length: 255)]
     protected ?string $title = null;
@@ -38,12 +37,12 @@ abstract class BaseContent
     #[ORM\Column]
     protected ?DateTimeImmutable $updatedAt = null;
 
-    public function getId(): ?int
+    public function getId(): ?string
     {
         return $this->id;
     }
 
-    public function setId(int $id): static
+    public function setId(string $id): static
     {
         $this->id = $id;
 

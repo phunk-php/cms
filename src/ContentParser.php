@@ -5,6 +5,7 @@ namespace Phunk\Cms;
 use DateTime;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+use Doctrine\ORM\EntityManagerInterface;
 use Phunk\{Phunk, Base, Result};
 use Phunk\Cms\Entity\BaseContent as Content;
 
@@ -20,6 +21,7 @@ class ContentParser extends Base
      */
     public function __construct(
         protected LoggerInterface $logger,
+        protected EntityManagerInterface $em,
         protected File $file,
         #[AutowireIterator('phunk.content_service')]
         protected iterable $contentServices,
@@ -37,7 +39,14 @@ class ContentParser extends Base
         ->map(fn (array $files) => array_filter($files, fn(Result $file) => $file->isOk()))
         ->andThen(Phunk::map(fn(Result $result) => $result->unwrap()))
         ->andThen(Phunk::map($this->updateOrInsertEntity(...)))
+        ->andThen($this->flush(...))
         ;
+    }
+
+    private function flush(): Result
+    {
+        //$this->em->flush();
+        return Result::ok();
     }
 
     private function updateOrInsertEntity(Content $content): Result
@@ -55,7 +64,7 @@ class ContentParser extends Base
             return Result::err('No content service found for entity "' . get_class($content) . '".');
         }
 
-        return $service->updateOrInsert($content);
+        return $service->updateOrInsert($content, false);
     }
 
     private function parseFileToEntity(string $filename): Result
@@ -73,11 +82,17 @@ class ContentParser extends Base
             }
 
             $entityClass = $contentService->getEntityClass();
-            $content = new $entityClass();
+            $id = $locale . '-' . $slug;
+
+            $content = $this->getOrCreateEntityInstance($entityClass, $id);
             $content
+            ->setId($id)
             ->setSlug($slug)
             ->setLocale($locale)
             ->setTitle($slug);
+
+            // Ensure Doctrine tracks this entity for insertion
+            $this->em->persist($content);
 
             return $this->file->getContents($filename)
             ->andThen(Yaml::parse(...))
@@ -108,7 +123,16 @@ class ContentParser extends Base
             // Check if a setter exists
             $method = 'set' . ucfirst($key);
             if (is_callable([$entity, $method])) {
-                $entity->$method($value);
+                // Check if the property is actually a mapped association
+                $reference = $this->getOrCreateReference($entity, $key, $value);
+
+                if ($reference !== null) {
+                    // Property is a mapped entity association -> pass the entity proxy
+                    $entity->$method($reference);
+                } else {
+                    // Property is a scalar column (e.g. string author) -> pass raw value
+                    $entity->$method($value);
+                }
             } else {
                 $dataJson[$key] = $value;
             }
@@ -120,6 +144,58 @@ class ContentParser extends Base
         ;
 
         return $entity;
+    }
+
+    private function getOrCreateEntityInstance(string $entityClass, string $id): object
+    {
+        $uow = $this->em->getUnitOfWork();
+        $idArray = $this->getIdArray($entityClass, $id);
+
+        // 1. If a relation previously created a proxy for this ID, reuse that proxy!
+        $existing = $uow->tryGetById($idArray, $entityClass);
+        if ($existing !== false && $existing !== null) {
+            return $existing;
+        }
+
+        // 2. If it's not in memory, this is a BRAND NEW entity being created from a file.
+        // Instantiate it directly so Doctrine registers an INSERT statement.
+        $entity = new $entityClass();
+
+        return $entity;
+    }
+
+    private function getIdArray(string $entityClass, string $id): array
+    {
+        $meta = $this->em->getClassMetadata($entityClass);
+        return [$meta->getSingleIdentifierFieldName() => $id];
+    }
+
+    private function getOrCreateReference(Content $entity, string $key, mixed $value): ?object
+    {
+        if ($value === null || is_object($value)) {
+            return null;
+        }
+
+        $metadata = $this->em->getClassMetadata(get_class($entity));
+
+        // Only process if it is a mapped single-valued relation (e.g. ManyToOne)
+        if (! $metadata->hasAssociation($key) || ! $metadata->isSingleValuedAssociation($key)) {
+            return null;
+        }
+
+        $targetClass = $metadata->getAssociationTargetClass($key);
+        $id = $entity->getLocale() . '-' . $value;
+        $idArray = $this->getIdArray($targetClass, $id);
+        $uow = $this->em->getUnitOfWork();
+
+        // 1. Check if the relation target is already in memory (as proxy or loaded entity)
+        $existing = $uow->tryGetById($idArray, $targetClass);
+        if ($existing !== false && $existing !== null) {
+            return $existing;
+        }
+
+        // 2. Otherwise create a reference proxy for the relation FK
+        return $this->em->getReference($targetClass, $idArray);
     }
 
     private function parseContentProperties(array $data): array

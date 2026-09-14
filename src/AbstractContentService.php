@@ -57,7 +57,7 @@ abstract class AbstractContentService extends Base
         return Result::err(new NotFound());
     }
 
-    public function updateOrInsert(Content $entity): Result
+    public function updateOrInsert(Content $entity, bool $flush = false): Result
     {
         return $this->findOneByLocaleAndSlug($entity->getLocale(), $entity->getSlug())
         ->inspect($this->debug(...), 'Tried to find existing content')
@@ -69,13 +69,13 @@ abstract class AbstractContentService extends Base
             ->setDate($entity->getDate())
             ->setData($entity->getData())
         )
-        ->andThen($this->save(...))
+        ->andThen($this->save(...), $flush)
         ;
     }
 
-    public function save(Content $entity): Result
+    public function save(Content $entity, bool $flush = false): Result
     {
-        $this->repository->save($entity, true);
+        $this->repository->save($entity, $flush);
         return Result::ok($entity);
     }
 
