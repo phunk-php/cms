@@ -43,10 +43,10 @@ class ContentParser extends Base
         ;
     }
 
-    private function flush(): Result
+    private function flush(mixed $entities): Result
     {
         $this->em->flush();
-        return Result::ok();
+        return Result::ok($entities);
     }
 
     private function updateOrInsertEntity(Content $content): Result
