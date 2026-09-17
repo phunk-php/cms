@@ -27,7 +27,7 @@ final class MediaImageRenderer implements NodeRendererInterface
 
         $slug  = $node->getUrl();
         $alt   = $this->getAltText($node);
-        $media = $this->content->findOneByLocaleAndSlug($this->locale, $slug)->unwrapOr(null);
+        $media = $this->media->findOneByLocaleAndSlug($this->locale, $slug)->unwrapOr(null);
 
         return $this->twig->render('element/inline-image.html.twig', [
             'slug'  => $slug,
