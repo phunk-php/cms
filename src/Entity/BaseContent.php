@@ -10,16 +10,16 @@ use Doctrine\DBAL\Types\Types;
 abstract class BaseContent
 {
     #[ORM\Id]
-    #[ORM\Column(length: 127)]
+    #[ORM\Column(length: 128)]
     protected ?string $id = null;
 
     #[ORM\Column(length: 255)]
     protected ?string $title = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 122)]
     protected ?string $slug = null;
 
-    #[ORM\Column(length: 8)]
+    #[ORM\Column(length: 5)]
     protected ?string $locale = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
