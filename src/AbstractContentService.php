@@ -40,10 +40,8 @@ abstract class AbstractContentService extends Base
 
     public function findOneByLocaleAndSlug(string $locale, string $slug): Result
     {
-        return $this->findOneBy([
-            'locale' => $locale,
-            'slug'   => $slug,
-        ]);
+        $id = "$locale-$slug";
+        return $this->findOneById($id);
     }
 
     public function findBy(array $criteria, array|null $orderBy = null, int|null $limit = null, int|null $offset = null): Result
@@ -105,7 +103,7 @@ abstract class AbstractContentService extends Base
         return Result::ok($entity);
     }
 
-    private function getCurrentLocale(): string
+    protected function getCurrentLocale(): string
     {
         return $this->requestStack->getCurrentRequest()?->getLocale() ?? 'en';
     }
