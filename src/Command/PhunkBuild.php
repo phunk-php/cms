@@ -9,6 +9,8 @@ use Phunk\{Phunk, Base, Result};
 use Phunk\Cms\ContentParser;
 use Phunk\Cms\File;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 
 #[AsCommand(name: 'phunk:build', description: 'Rebuild the content cache and clear the nginx cache.')]
 class PhunkBuild extends Base
@@ -17,14 +19,14 @@ class PhunkBuild extends Base
         protected LoggerInterface $logger,
         protected ContentParser $content,
         protected File $file,
-        protected string $path,
+        protected array $clearCacheCommand,
     ) {
         parent::__construct($logger);
     }
 
     public function __invoke(OutputInterface $output): int
     {
-        $this->debug('__invoke', ['path' => $this->path]);
+        $this->debug('__invoke', ['command' => $this->clearCacheCommand]);
 
         $contentResult = $this->content->processContent();
 
@@ -40,18 +42,16 @@ class PhunkBuild extends Base
 
         $output->writeln(sprintf('Rebuilt content cache (%d item(s)).', count($items)));
 
-        return $this->file->clearPath($this->path)
-        ->match(
-            onOk: function (array $summary) use ($output): int {
-                $output->writeln(sprintf('Deleted %d file(s) from %s (%d failed).', $summary['deleted'], $this->path, $summary['failed']));
+        $process = new Process($this->clearCacheCommand);
+        $process->run();
 
-                return $summary['failed'] > 0 ? Command::FAILURE : Command::SUCCESS;
-            },
-            onErr: function (mixed $error) use ($output): int {
-                $output->writeln(sprintf('<error>Failed to clear cache at %s: %s</error>', $this->path, $error));
+        if (!$process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
 
-                return Command::FAILURE;
-            },
-        );
+        $output->write($process->getOutput());
+        $output->writeln('Cleared nginx cache.');
+
+        return Command::SUCCESS;
     }
 }

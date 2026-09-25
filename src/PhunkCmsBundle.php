@@ -17,7 +17,7 @@ class PhunkCmsBundle extends AbstractBundle
                 ->scalarNode('content_path')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('image_path')->isRequired()->cannotBeEmpty()->end()
                 ->scalarNode('image_cache_path')->isRequired()->cannotBeEmpty()->end()
-                ->scalarNode('nginx_cache_path')->isRequired()->cannotBeEmpty()->end()
+                ->variableNode('nginx_cache_clear_command')->isRequired()->end()
             ->end()
         ;
     }
@@ -32,7 +32,7 @@ class PhunkCmsBundle extends AbstractBundle
             ->arg('$source', $config['image_path'])
             ->arg('$cache', $config['image_cache_path'])
         ;
-        $services->get(NginxCacheClear::class)->arg('$path', $config['nginx_cache_path']);
-        $services->get(PhunkBuild::class)->arg('$path', $config['nginx_cache_path']);
+        $services->get(NginxCacheClear::class)->arg('$clearCacheCommand', $config['nginx_cache_clear_command']);
+        $services->get(PhunkBuild::class)->arg('$clearCacheCommand', $config['nginx_cache_clear_command']);
     }
 }
