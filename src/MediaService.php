@@ -3,7 +3,6 @@
 namespace Phunk\Cms;
 
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Phunk\{Result, Error};
 use Phunk\Cms\Entity\BaseContent as Content;
 use Phunk\Cms\Repository\MediaRepository;
@@ -12,10 +11,10 @@ class MediaService extends AbstractContentService
 {
     public function __construct(
         LoggerInterface $logger,
-        RequestStack $requestStack,
+        LocaleProvider $localeProvider,
         MediaRepository $repository,
     ) {
-        parent::__construct($logger, $requestStack, $repository);
+        parent::__construct($logger, $localeProvider, $repository);
     }
 
     public function findBanner(Content $content): Result

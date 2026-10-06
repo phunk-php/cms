@@ -2,7 +2,6 @@
 
 namespace Phunk\Cms;
 
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Phunk\{Base, Result, NotFound};
 use Phunk\Cms\Entity\BaseContent as Content;
@@ -18,7 +17,7 @@ abstract class AbstractContentService extends Base
 {
     public function __construct(
         protected LoggerInterface $logger,
-        protected RequestStack $requestStack,
+        protected LocaleProvider $localeProvider,
         protected AbstractContentRepository $repository,
     ) {
     }
@@ -105,7 +104,7 @@ abstract class AbstractContentService extends Base
 
     protected function getCurrentLocale(): string
     {
-        return $this->requestStack->getCurrentRequest()?->getLocale() ?? 'en';
+        return $this->localeProvider->getLocale();
     }
 
     public function __call(string $method, array $arguments): Result
